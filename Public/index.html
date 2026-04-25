@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" id="htmlTag">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="بازارچه">
+  <title>بازارچه - خرید و فروش</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+</head>
+<body>
+  <div class="header">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-store"></i>
+        <span id="logoText">بازارچه</span>
+      </div>
+      
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="جستجوی موتر، موبایل، مبلمان...">
+        <button id="searchBtn"><i class="fas fa-search"></i></button>
+      </div>
+      
+      <div class="right-controls">
+        <select id="languageSwitcher">
+          <option value="fa">🇦🇫 فارسی</option>
+          <option value="en">🇺🇸 English</option>
+        </select>
+        
+        <!-- Admin Link -->
+        <a href="/admin/admin.html" id="adminLink" style="display: none;" class="post-ad-btn admin-btn">
+          <i class="fas fa-crown"></i>
+          <span id="adminBtnText">مدیریت</span>
+        </a>
+        
+        <!-- LOGGED OUT - Show these buttons -->
+        <div id="authButtons">
+          <button class="post-ad-btn" id="loginBtn">
+            <i class="fas fa-sign-in-alt"></i>
+            <span id="loginBtnText">ورود</span>
+          </button>
+          <button class="post-ad-btn" id="registerBtn">
+            <i class="fas fa-user-plus"></i>
+            <span id="registerBtnText">ثبت نام</span>
+          </button>
+        </div>
+        
+        <!-- LOGGED IN - Show these buttons -->
+        <div id="userMenu" style="display: none;">
+          <div class="user-profile" id="userProfile">
+            <i class="fas fa-user-circle"></i>
+            <span id="usernameDisplay"></span>
+          </div>
+          <button class="post-ad-btn" id="postAdBtn">
+            <i class="fas fa-plus-circle"></i>
+            <span id="postAdBtnText">ثبت آگهی</span>
+          </button>
+          <button class="post-ad-btn" id="favoritesBtn">
+            <i class="fas fa-heart"></i>
+            <span id="favoritesBtnText">علاقه‌مندی‌ها</span>
+          </button>
+          <button class="post-ad-btn" id="messagesBtn">
+            <i class="fas fa-envelope"></i>
+            <span id="messagesBtnText">پیام‌ها</span>
+            <span id="unreadBadge" class="unread-badge" style="display:none;">0</span>
+          </button>
+          <button class="post-ad-btn" id="myAdsBtn">
+            <i class="fas fa-list"></i>
+            <span id="myAdsBtnText">آگهی‌های من</span>
+          </button>
+          <button class="post-ad-btn" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span id="logoutBtnText">خروج</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Filters Bar -->
+    <div class="filters-bar" id="filtersBar">
+      <button class="filter-toggle" id="filterToggleBtn">
+        <i class="fas fa-sliders-h"></i>
+        <span id="filterToggleText">فیلترهای پیشرفته</span>
+      </button>
+      <div class="advanced-filters" id="advancedFilters" style="display:none;">
+        <div class="filter-group">
+          <label id="minPriceLabel">حداقل قیمت</label>
+          <input type="number" id="minPrice" placeholder="0" step="100">
+        </div>
+        <div class="filter-group">
+          <label id="maxPriceLabel">حداکثر قیمت</label>
+          <input type="number" id="maxPrice" placeholder="حداکثر" step="100">
+        </div>
+        <div class="filter-group">
+          <label id="conditionLabel">وضعیت</label>
+          <select id="conditionFilter">
+            <option value="all" id="conditionAll">همه</option>
+            <option value="new" id="conditionNew">نو</option>
+            <option value="like-new" id="conditionLikeNew">مثل نو</option>
+            <option value="used" id="conditionUsed">استفاده شده</option>
+            <option value="old" id="conditionOld">قدیمی</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label id="sortLabel">مرتب سازی</label>
+          <select id="sortFilter">
+            <option value="newest" id="sortNewest">جدیدترین</option>
+            <option value="price_low" id="sortPriceLow">ارزانترین</option>
+            <option value="price_high" id="sortPriceHigh">گرانترین</option>
+            <option value="popular" id="sortPopular">محبوبترین</option>
+          </select>
+        </div>
+        <button id="applyFiltersBtn" class="apply-filters-btn"><span id="applyFiltersText">اعمال فیلترها</span></button>
+        <button id="clearFiltersBtn" class="clear-filters-btn"><span id="clearFiltersText">پاک کردن</span></button>
+      </div>
+    </div>
+    
+    <div class="categories" id="categoryFilter">
+      <button class="cat-btn active" data-cat="all" id="catAll">همه</button>
+      <button class="cat-btn" data-cat="Electronics" id="catElectronics">الکترونیک</button>
+      <button class="cat-btn" data-cat="Furniture" id="catFurniture">مبلمان</button>
+      <button class="cat-btn" data-cat="Cars" id="catCars">موتر</button>
+      <button class="cat-btn" data-cat="Fashion" id="catFashion">مد و لباس</button>
+      <button class="cat-btn" data-cat="Other" id="catOther">سایر</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="listings-header">
+      <h3 id="pageTitle">آخرین آگهی‌ها</h3>
+      <span id="resultCount"></span>
+    </div>
+    <div id="productGrid" class="product-grid"></div>
+    <div id="loadingIndicator" class="loading-indicator" style="display:none;">
+      <i class="fas fa-spinner fa-spin"></i> <span id="loadingText">در حال بارگذاری...</span>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <h2 id="loginModalTitle">ورود</h2>
+      <input type="email" id="loginEmail" placeholder="ایمیل">
+      <input type="password" id="loginPassword" placeholder="رمز عبور">
+      <div class="modal-buttons">
+        <button class="submit-btn" id="confirmLoginBtn">
+          <span id="loginBtnModal">ورود</span>
+        </button>
+        <button class="close-modal closeLoginModal">
+          <span id="cancelBtnText">انصراف</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div id="registerModal" class="modal">
+    <div class="modal-content">
+      <h2 id="registerModalTitle">ایجاد حساب</h2>
+      <input type="text" id="regUsername" placeholder="نام کاربری *">
+      <input type="email" id="regEmail" placeholder="ایمیل *">
+      <input type="password" id="regPassword" placeholder="رمز عبور *">
+      <input type="tel" id="regWhatsapp" placeholder="شماره واتساپ (اختیاری)">
+      <small class="help-text">
+        <i class="fab fa-whatsapp"></i>
+        <span id="whatsappHelpText">این شماره برای آگهی‌های شما استفاده خواهد شد</span>
+      </small>
+      <input type="text" id="regShopName" placeholder="نام فروشگاه (اختیاری)">
+      <div class="modal-buttons">
+        <button class="submit-btn" id="confirmRegisterBtn">
+          <span id="registerBtnModal">ثبت نام</span>
+        </button>
+        <button class="close-modal closeRegisterModal">
+          <span id="cancelBtnText2">انصراف</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post Ad Modal -->
+  <div id="postModal" class="modal">
+    <div class="modal-content">
+      <h2 id="postAdModalTitle">ثبت آگهی جدید</h2>
+      <input type="text" id="adTitle" placeholder="عنوان *">
+      <input type="number" id="adPrice" placeholder="قیمت (دالر) *">
+      <select id="adCategory">
+        <option value="Electronics" id="catElectronicsOption">الکترونیک</option>
+        <option value="Furniture" id="catFurnitureOption">مبلمان</option>
+        <option value="Cars" id="catCarsOption">موتر</option>
+        <option value="Fashion" id="catFashionOption">مد و لباس</option>
+        <option value="Other" id="catOtherOption">سایر</option>
+      </select>
+      <select id="adCondition">
+        <option value="new" id="conditionNewOption">نو</option>
+        <option value="like-new" id="conditionLikeNewOption">مثل نو</option>
+        <option value="used" id="conditionUsedOption">استفاده شده</option>
+        <option value="old" id="conditionOldOption">قدیمی</option>
+      </select>
+      <input type="text" id="adLocation" placeholder="موقعیت *">
+      <input type="tel" id="adWhatsapp" placeholder="شماره واتساپ (با کد کشور) *">
+      <small class="help-text whatsapp-help">
+        <i class="fab fa-whatsapp"></i>
+        <span id="whatsappRequiredText">مشتریان از طریق واتساپ با شما تماس می‌گیرند</span>
+      </small>
+      <input type="text" id="adShopName" placeholder="نام فروشگاه (اختیاری)">
+      <small class="help-text">
+        <i class="fas fa-store"></i>
+        <span id="shopOptionalText">در صورت فروشنده خصوصی بودن خالی بگذارید</span>
+      </small>
+      <button type="button" class="get-location-btn" id="getLocationBtn">
+        <i class="fas fa-map-marker-alt"></i>
+        <span id="locationBtnText">استفاده از موقعیت فعلی من</span>
+      </button>
+      <textarea id="adDesc" rows="3" placeholder="توضیحات"></textarea>
+      <input type="file" id="adImages" accept="image/*" multiple>
+      <small class="help-text">
+        <span id="imageHelpText">📸 حداکثر 5 تصویر - برای انتخاب چندین تصویر کلید Ctrl را نگه دارید</span>
+      </small>
+      <div id="imagePreview"></div>
+      <div class="modal-buttons">
+        <button class="submit-btn" id="confirmPostBtn">
+          <span id="postBtnText">ثبت آگهی</span>
+        </button>
+        <button class="close-modal closePostModal">
+          <span id="cancelBtnText3">انصراف</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Detail Modal -->
+  <div id="detailModal" class="modal">
+    <div class="modal-content" id="detailModalContent">
+      <div id="detailContent"></div>
+      <div class="modal-buttons">
+        <button class="close-modal closeDetailModal">
+          <span id="closeBtnText">بستن</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Modal -->
+  <div id="chatModal" class="modal">
+    <div class="modal-content chat-modal-content">
+      <h2 id="chatModalTitle">پیام‌ها</h2>
+      <div id="chatView" class="chat-view" style="display:none;">
+        <div class="chat-header" id="chatHeader"></div>
+        <div class="messages-container" id="messagesContainer"></div>
+        <div class="chat-input-area">
+          <input type="text" id="messageInput" placeholder="پیام خود را بنویسید...">
+          <button id="sendMessageBtn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="close-modal closeChatModal" id="closeChatModal">
+          <span id="closeChatText">بستن</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Favorites Modal -->
+  <div id="favoritesModal" class="modal">
+    <div class="modal-content">
+      <h2 id="favoritesModalTitle">علاقه‌مندی‌های من</h2>
+      <div id="favoritesList" class="favorites-list"></div>
+      <div class="modal-buttons">
+        <button class="close-modal closeFavoritesModal">
+          <span id="closeFavoritesText">بستن</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install PWA Prompt -->
+  <div id="installPrompt" class="install-prompt" style="display:none;">
+    <div class="install-prompt-content">
+      <i class="fas fa-download"></i>
+      <div>
+        <strong id="installTitle">نصب بازارچه</strong>
+        <small id="installSubtitle">به صفحه اصلی اضافه کنید برای دسترسی آسان</small>
+      </div>
+      <button id="installBtn"><span id="installBtnText">نصب</span></button>
+      <button id="closeInstallBtn">✕</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast-notification"></div>
+
+  <footer>
+    <p id="footerText">© 2025 بازارچه — خرید و فروش امن</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
