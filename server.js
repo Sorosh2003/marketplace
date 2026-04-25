@@ -1,3 +1,5 @@
+// Vercel compatibility
+const isVercel = process.env.VERCEL === '1';
 const express = require('express');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
@@ -402,12 +404,11 @@ app.put('/api/admin/products/:id/approve', authenticateToken, requireAdmin, (req
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n========================================`);
-  console.log(`🚀 SERVER RUNNING`);
-  console.log(`========================================`);
-  console.log(`📱 Website: https://marketplace-2-k7vj.onrender.com`);
-  console.log(`👑 Admin: https://marketplace-2-k7vj.onrender.com/admin`);
-  console.log(`📧 Admin Login: admin@marketplace.com / admin123`);
-  console.log(`========================================\n`);
-});
+// Export for Vercel serverless
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
