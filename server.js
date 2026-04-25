@@ -17,6 +17,11 @@ app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 app.use('/admin', express.static('admin'));
 
+// Serve homepage
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
