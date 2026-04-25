@@ -19,6 +19,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Debug route - check if file exists
+
+app.get('/debug', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'index.html');
+  const fs = require('fs');
+  
+  if (fs.existsSync(filePath)) {
+    res.send('File exists at: ' + filePath);
+  } else {
+    res.send('File NOT found at: ' + filePath);
+  }
+});
 
 // Routes for HTML files
 app.get('/', (req, res) => {
