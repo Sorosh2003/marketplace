@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - MarketPlace</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    /* Login Page */
+    .login-page {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .login-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      width: 400px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    .login-card h2 {
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: #1e293b;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 0.8rem;
+      margin: 0.5rem 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .login-card button {
+      width: 100%;
+      padding: 0.8rem;
+      background: #f97316;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .login-card button:hover {
+      background: #ea580c;
+    }
+
+    .error-msg {
+      color: #dc2626;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    /* Admin Dashboard */
+    .admin-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: #1e293b;
+      color: white;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #334155;
+    }
+
+    .sidebar-header h2 {
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sidebar-nav {
+      padding: 1rem 0;
+    }
+
+    .nav-item {
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #cbd5e1;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background: #334155;
+      color: white;
+    }
+
+    .nav-item i {
+      width: 24px;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      background: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    .top-bar {
+      background: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .top-bar h1 {
+      font-size: 1.5rem;
+    }
+
+    .logout-btn {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .logout-btn:hover {
+      background: #b91c1c;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-card h3 {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f97316;
+    }
+
+    /* Content Panels */
+    .content-panel {
+      padding: 2rem;
+      display: none;
+    }
+
+    .content-panel.active {
+      display: block;
+    }
+
+    /* Tables */
+    .table-container {
+      background: white;
+      border-radius: 1rem;
+      overflow: auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Badges */
+    .badge {
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .badge.admin {
+      background: #8b5cf6;
+      color: white;
+    }
+
+    .badge.user {
+      background: #64748b;
+      color: white;
+    }
+
+    .badge.active {
+      background: #10b981;
+      color: white;
+    }
+
+    .badge.pending {
+      background: #f59e0b;
+      color: white;
+    }
+
+    /* Buttons */
+    .delete-btn, .approve-btn {
+      padding: 0.3rem 0.8rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0 0.2rem;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .delete-btn {
+      background: #dc2626;
+      color: white;
+    }
+
+    .delete-btn:hover {
+      background: #b91c1c;
+    }
+
+    .approve-btn {
+      background: #10b981;
+      color: white;
+    }
+
+    .approve-btn:hover {
+      background: #059669;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #64748b;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 70px;
+      }
+      .sidebar-header h2 span, .nav-item span {
+        display: none;
+      }
+      .main-content {
+        margin-left: 70px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      th, td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="loginPage" class="login-page">
+    <div class="login-card">
+      <h2><i class="fas fa-shield-alt"></i> Admin Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email" value="admin@marketplace.com">
+      <input type="password" id="loginPassword" placeholder="Password" value="admin123">
+      <button onclick="handleLogin()">Login to Dashboard</button>
+      <div id="loginError" class="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" style="display: none;">
+    <div class="admin-container">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2><i class="fas fa-crown"></i> <span>Admin Panel</span></h2>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item active" onclick="showPanel('dashboard')">
+            <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+          </div>
+          <div class="nav-item" onclick="showPanel('users')">
+            <i class="fas fa-users"></i> <span>Users</span>
+          </div>
+          <div class="nav-item" onclick="showPanel('products')">
+            <i class="fas fa-boxes"></i> <span>All Ads</span>
+          </div>
+          <div class="nav-item" onclick="showPanel('pending')">
+            <i class="fas fa-clock"></i> <span>Pending Approval</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="top-bar">
+          <h1 id="panelTitle">Dashboard</h1>
+          <button class="logout-btn" onclick="handleLogout()">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+
+        <!-- Dashboard Panel -->
+        <div id="panelDashboard" class="content-panel active">
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><h3>Total Users</h3><div class="stat-number" id="totalUsers">0</div></div>
+            <div class="stat-card"><h3>Total Ads</h3><div class="stat-number" id="totalAds">0</div></div>
+            <div class="stat-card"><h3>Pending Approval</h3><div class="stat-number" id="pendingTotal">0</div></div>
+            <div class="stat-card"><h3>Active Ads</h3><div class="stat-number" id="activeTotal">0</div></div>
+          </div>
+        </div>
+
+        <!-- Users Panel -->
+        <div id="panelUsers" class="content-panel">
+          <div class="table-container" id="usersTable"><div class="loading">Loading users...</div></div>
+        </div>
+
+        <!-- Products Panel -->
+        <div id="panelProducts" class="content-panel">
+          <div class="table-container" id="productsTable"><div class="loading">Loading products...</div></div>
+        </div>
+
+        <!-- Pending Panel -->
+        <div id="panelPending" class="content-panel">
+          <div class="table-container" id="pendingTable"><div class="loading">Loading pending ads...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let authToken = localStorage.getItem('adminToken');
+
+    if (authToken) {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('adminDashboard').style.display = 'block';
+      loadAllData();
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        
+        if (response.ok && data.user && data.user.isAdmin === 1) {
+          authToken = data.token;
+          localStorage.setItem('adminToken', authToken);
+          document.getElementById('loginPage').style.display = 'none';
+          document.getElementById('adminDashboard').style.display = 'block';
+          loadAllData();
+        } else {
+          document.getElementById('loginError').innerText = 'Invalid admin credentials';
+        }
+      } catch (error) {
+        document.getElementById('loginError').innerText = 'Connection error. Make sure server is running.';
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('adminToken');
+      location.reload();
+    }
+
+    function showPanel(panelName) {
+      document.querySelectorAll('.content-panel').forEach(panel => panel.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      
+      document.getElementById(`panel${panelName.charAt(0).toUpperCase() + panelName.slice(1)}`).classList.add('active');
+      event.target.closest('.nav-item').classList.add('active');
+      
+      const titles = { dashboard: 'Dashboard', users: 'User Management', products: 'All Ads', pending: 'Pending Approval' };
+      document.getElementById('panelTitle').innerText = titles[panelName];
+    }
+
+    async function fetchAPI(endpoint) {
+      const response = await fetch(`/api${endpoint}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      return response.json();
+    }
+
+    async function loadAllData() {
+      try {
+        // Load stats
+        const stats = await fetchAPI('/admin/stats');
+        document.getElementById('totalUsers').innerText = stats.totalUsers || 0;
+        document.getElementById('totalAds').innerText = stats.totalAds || 0;
+        document.getElementById('pendingTotal').innerText = stats.pendingAds || 0;
+        document.getElementById('activeTotal').innerText = stats.activeAds || 0;
+        
+        // Load users
+        const users = await fetchAPI('/admin/users');
+        if (users && users.length > 0) {
+          let usersHtml = `<table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>WhatsApp</th><th>Shop Name</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
+          users.forEach(user => {
+            usersHtml += `<tr>
+              <td>${user.id}</td>
+              <td>${escapeHtml(user.username)}</td>
+              <td>${escapeHtml(user.email)}</td>
+              <td>${escapeHtml(user.whatsapp || '-')}</td>
+              <td>${escapeHtml(user.shop_name || '-')}</td>
+              <td><span class="badge ${user.is_admin ? 'admin' : 'user'}">${user.is_admin ? 'Admin' : 'User'}</span></td>
+              <td>${!user.is_admin ? `<button class="delete-btn" onclick="deleteUser(${user.id})">Delete</button>` : '-'}</td>
+            </tr>`;
+          });
+          usersHtml += '</tbody></table>';
+          document.getElementById('usersTable').innerHTML = usersHtml;
+        } else {
+          document.getElementById('usersTable').innerHTML = '<div class="loading">No users found</div>';
+        }
+        
+        // Load products
+        const products = await fetchAPI('/admin/all-products');
+        if (products && products.length > 0) {
+          let productsHtml = `<table><thead><tr><th>ID</th><th>Title</th><th>Price</th><th>Seller</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+          products.forEach(product => {
+            productsHtml += `<tr>
+              <td>${product.id}</td>
+              <td>${escapeHtml(product.title)}</td>
+              <td>$${product.price}</td>
+              <td>${escapeHtml(product.username || 'Unknown')}</td>
+              <td>${escapeHtml(product.category)}</td>
+              <td><span class="badge ${product.status === 'active' ? 'active' : 'pending'}">${product.status || 'pending'}</span></td>
+              <td><button class="delete-btn" onclick="deleteProduct(${product.id})">Delete</button></td>
+            </tr>`;
+          });
+          productsHtml += '</tbody></table>';
+          document.getElementById('productsTable').innerHTML = productsHtml;
+        } else {
+          document.getElementById('productsTable').innerHTML = '<div class="loading">No products found</div>';
+        }
+        
+        // Load pending
+        const pending = await fetchAPI('/admin/pending-products');
+        if (pending && pending.length > 0) {
+          let pendingHtml = `<table><thead><tr><th>ID</th><th>Title</th><th>Price</th><th>Seller</th><th>Category</th><th>Actions</th></tr></thead><tbody>`;
+          pending.forEach(product => {
+            pendingHtml += `<tr>
+              <td>${product.id}</td>
+              <td>${escapeHtml(product.title)}</td>
+              <td>$${product.price}</td>
+              <td>${escapeHtml(product.username || 'Unknown')}</td>
+              <td>${escapeHtml(product.category)}</td>
+              <td>
+                <button class="approve-btn" onclick="approveProduct(${product.id})">Approve</button>
+                <button class="delete-btn" onclick="deleteProduct(${product.id})">Reject</button>
+              </td>
+            </tr>`;
+          });
+          pendingHtml += '</tbody></table>';
+          document.getElementById('pendingTable').innerHTML = pendingHtml;
+        } else {
+          document.getElementById('pendingTable').innerHTML = '<div class="loading">No pending ads</div>';
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (confirm('Delete this user? All their ads will also be deleted.')) {
+        await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } });
+        loadAllData();
+      }
+    }
+
+    async function deleteProduct(productId) {
+      if (confirm('Delete this ad?')) {
+        await fetch(`/api/admin/products/${productId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } });
+        loadAllData();
+      }
+    }
+
+    async function approveProduct(productId) {
+      await fetch(`/api/admin/products/${productId}/approve`, { method: 'PUT', headers: { 'Authorization': `Bearer ${authToken}` } });
+      loadAllData();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+  </script>
+</body>
+</html>
