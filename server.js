@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'your_super_secret_key_change_this';
 
 app.use(cors());
@@ -28,11 +28,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadMultiple = upload.array('images', 5);
 
-const db = new sqlite3.Database('database.sqlite');
+// Initialize database
+const db = new Database('database.sqlite');
 
 // Create tables
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS users (
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -41,9 +42,11 @@ db.serialize(() => {
     shop_name TEXT,
     is_admin INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )
+`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS products (
+db.exec(`
+  CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
@@ -59,96 +62,63 @@ db.serialize(() => {
     status TEXT DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
-  )`);
+  )
+`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS favorites (
+db.exec(`
+  CREATE TABLE IF NOT EXISTS favorites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(product_id) REFERENCES products(id),
     UNIQUE(user_id, product_id)
-  )`);
+  )
+`);
 
-  // Create admin user
-  db.get("SELECT * FROM users WHERE email = 'admin@marketplace.com'", async (err, user) => {
-    if (!user) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      db.run("INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)",
-        ['Admin', 'admin@marketplace.com', hashedPassword, 1]);
-      console.log('✅ Admin created: admin@marketplace.com / admin123');
-    }
-  });
-});
-
-// Add sample products if none exist
-db.get("SELECT COUNT(*) as count FROM products WHERE status = 'active'", [], (err, row) => {
-  if (!err && row && row.count === 0) {
-    db.get("SELECT id FROM users WHERE is_admin = 1", [], (err, admin) => {
-      const userId = admin ? admin.id : 1;
-      
-      const sampleProducts = [
-        { title: 'iPhone 14 Pro', price: 999, category: 'Electronics', location: 'Kabul', description: 'Like new, 256GB', condition: 'like-new', whatsapp: '0781234567', shop_name: 'Tech Store' },
-        { title: 'Samsung Galaxy S23', price: 850, category: 'Electronics', location: 'Herat', description: 'Brand new', condition: 'new', whatsapp: '0781234568', shop_name: 'Mobile Center' },
-        { title: 'Modern Sofa', price: 350, category: 'Furniture', location: 'Herat', description: 'Comfortable fabric sofa', condition: 'new', whatsapp: '0798765432', shop_name: 'Home Furniture' },
-        { title: 'Wooden Dining Table', price: 250, category: 'Furniture', location: 'Kabul', description: '6-seater', condition: 'used', whatsapp: '0798765433', shop_name: '' },
-        { title: 'Toyota Corolla 2020', price: 15000, category: 'Cars', location: 'Mazar', description: 'Good condition, low mileage', condition: 'used', whatsapp: '0700123456', shop_name: 'Auto Gallery' },
-        { title: 'Honda Civic 2019', price: 13500, category: 'Cars', location: 'Kabul', description: 'Excellent condition', condition: 'used', whatsapp: '0700123457', shop_name: '' },
-        { title: 'Nike Air Max', price: 120, category: 'Fashion', location: 'Kandahar', description: 'Original, size 42', condition: 'new', whatsapp: '0711223344', shop_name: 'Sport Shop' },
-        { title: 'Gucci Bag', price: 450, category: 'Fashion', location: 'Kabul', description: 'Authentic', condition: 'like-new', whatsapp: '0711223345', shop_name: 'Luxury Store' }
-      ];
-      
-      sampleProducts.forEach(p => {
-        db.run(`INSERT INTO products (user_id, title, price, category, location, description, condition, whatsapp, shop_name, status, images)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
-          [userId, p.title, p.price, p.category, p.location, p.description, p.condition, p.whatsapp, p.shop_name, JSON.stringify([])]);
-      });
-      console.log('✅ Sample products added for testing!');
-    });
-  }
-});
+// Create admin user
+const adminExists = db.prepare("SELECT * FROM users WHERE email = 'admin@marketplace.com'").get();
+if (!adminExists) {
+  const hashedPassword = bcrypt.hashSync('admin123', 10);
+  db.prepare("INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)").run('Admin', 'admin@marketplace.com', hashedPassword, 1);
+  console.log('✅ Admin created');
+}
 
 // ========== AUTH ROUTES ==========
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', (req, res) => {
   const { username, email, password, whatsapp, shop_name } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields required' });
   }
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    db.run(
-      'INSERT INTO users (username, email, password, whatsapp, shop_name) VALUES (?, ?, ?, ?, ?)',
-      [username, email, hashedPassword, whatsapp || '', shop_name || ''],
-      function(err) {
-        if (err) {
-          if (err.message.includes('UNIQUE')) {
-            return res.status(400).json({ error: 'Username or email already exists' });
-          }
-          return res.status(500).json({ error: err.message });
-        }
-        const token = jwt.sign({ id: this.lastID, username, isAdmin: 0 }, JWT_SECRET);
-        res.json({ token, user: { id: this.lastID, username, email, whatsapp, shop_name, isAdmin: 0 } });
-      }
-    );
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const stmt = db.prepare('INSERT INTO users (username, email, password, whatsapp, shop_name) VALUES (?, ?, ?, ?, ?)');
+    const result = stmt.run(username, email, hashedPassword, whatsapp || '', shop_name || '');
+    const token = jwt.sign({ id: result.lastInsertRowid, username, isAdmin: 0 }, JWT_SECRET);
+    res.json({ token, user: { id: result.lastInsertRowid, username, email, whatsapp, shop_name, isAdmin: 0 } });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) {
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-    if (err || !user) {
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const valid = await bcrypt.compare(password, user.password);
+    const valid = bcrypt.compareSync(password, user.password);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const token = jwt.sign({ id: user.id, username: user.username, isAdmin: user.is_admin || 0 }, JWT_SECRET);
     res.json({ token, user: { id: user.id, username: user.username, email: user.email, whatsapp: user.whatsapp, shop_name: user.shop_name, isAdmin: user.is_admin || 0 } });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 function authenticateToken(req, res, next) {
@@ -169,12 +139,9 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ========== PRODUCT ROUTES - FIXED CATEGORY FILTERING ==========
+// ========== PRODUCT ROUTES ==========
 app.get('/api/products', (req, res) => {
   const { category, search, minPrice, maxPrice, condition } = req.query;
-  
-  console.log('========== PRODUCT REQUEST ==========');
-  console.log('Category requested:', category);
   
   let query = `
     SELECT p.*, u.username, u.email, u.whatsapp as seller_whatsapp, u.shop_name as seller_shop
@@ -184,13 +151,9 @@ app.get('/api/products', (req, res) => {
   `;
   let params = [];
   
-  // CRITICAL FIX: Category filter - exact match
-  if (category && category !== 'all' && category !== 'undefined' && category !== 'null') {
+  if (category && category !== 'all') {
     query += ' AND p.category = ?';
     params.push(category);
-    console.log('FILTERING BY CATEGORY:', category);
-  } else {
-    console.log('Showing ALL categories');
   }
   
   if (search && search.trim() !== '') {
@@ -205,24 +168,16 @@ app.get('/api/products', (req, res) => {
     query += ' AND p.price <= ?';
     params.push(parseFloat(maxPrice));
   }
-  if (condition && condition !== 'all' && condition !== 'undefined') {
+  if (condition && condition !== 'all') {
     query += ' AND p.condition = ?';
     params.push(condition);
   }
   
-  query += ' ORDER BY p.created_at DESC';
+  query += ' ORDER BY p.is_featured DESC, p.created_at DESC';
   
-  console.log('SQL Query:', query);
-  console.log('Params:', params);
-  
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: err.message });
-    }
-    
-    console.log(`Found ${rows.length} products`);
-    
+  try {
+    const stmt = db.prepare(query);
+    const rows = params.length > 0 ? stmt.all(...params) : stmt.all();
     rows.forEach(row => {
       if (row.images) {
         try {
@@ -235,12 +190,15 @@ app.get('/api/products', (req, res) => {
       }
     });
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/my-products', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM products WHERE user_id = ? ORDER BY created_at DESC', [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const rows = db.prepare('SELECT * FROM products WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
     rows.forEach(row => {
       if (row.images) {
         try {
@@ -251,11 +209,13 @@ app.get('/api/my-products', authenticateToken, (req, res) => {
       }
     });
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/products', authenticateToken, (req, res) => {
-  uploadMultiple(req, res, async (err) => {
+  uploadMultiple(req, res, (err) => {
     if (err) {
       return res.status(400).json({ error: 'Image upload error: ' + err.message });
     }
@@ -269,55 +229,56 @@ app.post('/api/products', authenticateToken, (req, res) => {
     const imageUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
     const imagesJson = JSON.stringify(imageUrls);
     
-    db.run(
-      `INSERT INTO products (user_id, title, price, category, location, description, whatsapp, shop_name, condition, images, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      [req.user.id, title, parseFloat(price), category, location, description || '', whatsapp || '', shop_name || '', condition || 'used', imagesJson],
-      function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, message: 'Product created, waiting for admin approval', images: imageUrls });
-      }
-    );
+    try {
+      const stmt = db.prepare(`INSERT INTO products (user_id, title, price, category, location, description, whatsapp, shop_name, condition, images, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`);
+      const result = stmt.run(req.user.id, title, parseFloat(price), category, location, description || '', whatsapp || '', shop_name || '', condition || 'used', imagesJson);
+      res.json({ id: result.lastInsertRowid, message: 'Product created, waiting for admin approval', images: imageUrls });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 });
 
 app.delete('/api/products/:id', authenticateToken, (req, res) => {
-  db.get('SELECT * FROM products WHERE id = ?', [req.params.id], (err, product) => {
-    if (err || !product) return res.status(404).json({ error: 'Product not found' });
+  try {
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
     if (product.user_id !== req.user.id && !req.user.isAdmin) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-    db.run('DELETE FROM products WHERE id = ?', [req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Product deleted' });
-    });
-  });
+    db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ========== FAVORITES ROUTES ==========
 app.post('/api/favorites/:productId', authenticateToken, (req, res) => {
-  db.run('INSERT OR IGNORE INTO favorites (user_id, product_id) VALUES (?, ?)',
-    [req.user.id, req.params.productId], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    db.prepare('INSERT OR IGNORE INTO favorites (user_id, product_id) VALUES (?, ?)').run(req.user.id, req.params.productId);
     res.json({ success: true });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.delete('/api/favorites/:productId', authenticateToken, (req, res) => {
-  db.run('DELETE FROM favorites WHERE user_id = ? AND product_id = ?',
-    [req.user.id, req.params.productId], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    db.prepare('DELETE FROM favorites WHERE user_id = ? AND product_id = ?').run(req.user.id, req.params.productId);
     res.json({ success: true });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/favorites', authenticateToken, (req, res) => {
-  db.all(`SELECT p.*, u.username, u.email FROM favorites f
-          JOIN products p ON f.product_id = p.id
-          JOIN users u ON p.user_id = u.id
-          WHERE f.user_id = ? AND p.status = 'active'
-          ORDER BY f.created_at DESC`, [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const rows = db.prepare(`SELECT p.*, u.username, u.email FROM favorites f
+      JOIN products p ON f.product_id = p.id
+      JOIN users u ON p.user_id = u.id
+      WHERE f.user_id = ? AND p.status = 'active'
+      ORDER BY f.created_at DESC`).all(req.user.id);
     rows.forEach(row => {
       if (row.images) {
         try {
@@ -328,73 +289,84 @@ app.get('/api/favorites', authenticateToken, (req, res) => {
       }
     });
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ========== ADMIN ROUTES ==========
 app.get('/api/admin/stats', authenticateToken, requireAdmin, (req, res) => {
-  db.get('SELECT COUNT(*) as totalUsers FROM users', [], (err, users) => {
-    db.get('SELECT COUNT(*) as totalAds FROM products', [], (err, ads) => {
-      db.get('SELECT COUNT(*) as pendingAds FROM products WHERE status = "pending"', [], (err, pending) => {
-        db.get('SELECT COUNT(*) as activeAds FROM products WHERE status = "active"', [], (err, active) => {
-          res.json({
-            totalUsers: users?.totalUsers || 0,
-            totalAds: ads?.totalAds || 0,
-            pendingAds: pending?.pendingAds || 0,
-            activeAds: active?.activeAds || 0
-          });
-        });
-      });
+  try {
+    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    const totalAds = db.prepare('SELECT COUNT(*) as count FROM products').get();
+    const pendingAds = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = "pending"').get();
+    const activeAds = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = "active"').get();
+    res.json({
+      totalUsers: totalUsers.count,
+      totalAds: totalAds.count,
+      pendingAds: pendingAds.count,
+      activeAds: activeAds.count
     });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  db.all('SELECT id, username, email, whatsapp, shop_name, is_admin, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+  try {
+    const rows = db.prepare('SELECT id, username, email, whatsapp, shop_name, is_admin, created_at FROM users ORDER BY created_at DESC').all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  db.run('DELETE FROM favorites WHERE user_id = ?', [req.params.id], () => {
-    db.run('DELETE FROM products WHERE user_id = ?', [req.params.id], () => {
-      db.run('DELETE FROM users WHERE id = ? AND is_admin = 0', [req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'User deleted' });
-      });
-    });
-  });
+  try {
+    db.prepare('DELETE FROM favorites WHERE user_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM products WHERE user_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM users WHERE id = ? AND is_admin = 0').run(req.params.id);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/admin/all-products', authenticateToken, requireAdmin, (req, res) => {
-  db.all(`SELECT p.*, u.username FROM products p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+  try {
+    const rows = db.prepare(`SELECT p.*, u.username FROM products p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC`).all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/admin/pending-products', authenticateToken, requireAdmin, (req, res) => {
-  db.all(`SELECT p.*, u.username FROM products p JOIN users u ON p.user_id = u.id WHERE p.status = 'pending' ORDER BY p.created_at DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+  try {
+    const rows = db.prepare(`SELECT p.*, u.username FROM products p JOIN users u ON p.user_id = u.id WHERE p.status = 'pending' ORDER BY p.created_at DESC`).all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.delete('/api/admin/products/:id', authenticateToken, requireAdmin, (req, res) => {
-  db.run('DELETE FROM favorites WHERE product_id = ?', [req.params.id], () => {
-    db.run('DELETE FROM products WHERE id = ?', [req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Product deleted' });
-    });
-  });
+  try {
+    db.prepare('DELETE FROM favorites WHERE product_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.put('/api/admin/products/:id/approve', authenticateToken, requireAdmin, (req, res) => {
-  db.run('UPDATE products SET status = "active" WHERE id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    db.prepare('UPDATE products SET status = "active" WHERE id = ?').run(req.params.id);
     res.json({ message: 'Product approved' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {
