@@ -22,17 +22,28 @@ app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 app.use('/admin', express.static('admin'));
 
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+// Only create uploads folder locally, not on Vercel
+if (!process.env.VERCEL) {
+  if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+  }
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
-const uploadMultiple = upload.array('images', 5);
+// Multer configuration - skip on Vercel
+let upload, uploadMultiple;
 
+if (!process.env.VERCEL) {
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/'),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  });
+  upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+  uploadMultiple = upload.array('images', 5);
+} else {
+  // On Vercel, create a dummy multer that rejects uploads
+  upload = multer({ storage: multer.memoryStorage() });
+  uploadMultiple = upload.array('images', 5);
+}
 // ========== AUTH ROUTES ==========
 app.post('/api/register', async (req, res) => {
   const { username, email, password, whatsapp, shop_name } = req.body;
