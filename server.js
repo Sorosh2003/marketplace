@@ -22,8 +22,10 @@ app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 app.use('/admin', express.static('admin'));
 
-// Only create uploads folder locally, not on Vercel
-if (!process.env.VERCEL) {
+
+// Only create uploads folder when running locally, not on Vercel
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
   if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
   }
@@ -32,7 +34,7 @@ if (!process.env.VERCEL) {
 // Multer configuration - skip on Vercel
 let upload, uploadMultiple;
 
-if (!process.env.VERCEL) {
+if (!isVercel) {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
