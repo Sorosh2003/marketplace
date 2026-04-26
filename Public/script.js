@@ -392,7 +392,7 @@ if (languageSwitcher) {
 }
 
 // ========== API FUNCTIONS ==========
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 async function fetchAPI(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -503,7 +503,7 @@ function renderProducts(products, showDelete = false) {
     <div class="card" data-id="${product.id}">
       <div class="card-img">
         ${product.images && product.images.length > 0 ? 
-          `<img src="http://localhost:3000${product.images[0]}" alt="${product.title}">` : 
+          `<img src="${API_URL.replace('/api', '')}${product.images[0]}" alt="${product.title}">` : 
           '<i class="fas fa-box fa-3x"></i>'
         }
         ${product.images && product.images.length > 1 ? 
@@ -590,14 +590,14 @@ function showDetailModal(product) {
   
   if (product.images && product.images.length > 0) {
     galleryHtml = `
-      <div>
-        <img id="mainImage" src="http://localhost:3000${product.images[0]}" style="width:100%; height:300px; object-fit:cover; border-radius:1rem;">
-        <div style="display:flex; gap:0.5rem; margin-top:0.5rem; overflow-x:auto;">
-          ${product.images.map(img => `
-            <img src="http://localhost:3000${img}" onclick="document.getElementById('mainImage').src=this.src" style="width:70px; height:70px; object-fit:cover; border-radius:0.5rem; cursor:pointer;">
-          `).join('')}
-        </div>
-      </div>
+     <div>
+  <img id="mainImage" src="${window.location.origin}${product.images[0]}" style="width:100%; height:300px; object-fit:cover; border-radius:1rem;">
+  <div style="display:flex; gap:0.5rem; margin-top:0.5rem; overflow-x:auto;">
+    ${product.images.map(img => `
+      <img src="${window.location.origin}${img}" onclick="document.getElementById('mainImage').src=this.src" style="width:70px; height:70px; object-fit:cover; border-radius:0.5rem; cursor:pointer;">
+    `).join('')}
+  </div>
+</div>
     `;
   } else {
     galleryHtml = `<div style="text-align:center; padding:2rem; background:#f1f5f9; border-radius:1rem;"><i class="fas fa-box fa-4x"></i></div>`;
